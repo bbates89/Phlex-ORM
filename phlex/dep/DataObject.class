@@ -1,0 +1,136 @@
+<?php
+
+class DataObject
+{
+	/* Database Connection Holder */
+	var $db;
+
+	/* Container Data */
+	var $container 	= null;
+	var $foreignKey = null;
+	var $hasMany;
+	var $belongsTo;
+	
+	/* Query Data */
+	var $result 		= false;
+	var $dataResult;
+	
+	/* Container Results */
+	var $childResult;
+	var $parentResult;
+	
+	/* FetchRow Result Iterator */
+	var $resultIterator = 0;
+	
+	/* Table Data */
+	var $useTable;
+	var $primaryKey = 'id';
+	
+	/* AutoMapping Flag */
+	var $autoMap;
+	
+	/*
+	 *	DataObject::Find
+	 *
+	 *	Executes a find using the given parameters.
+	 *
+	 */
+	function find( $sParams )
+	{
+		$this->resultIterator = 0;
+	
+		if( !is_array( $sParams ) )
+		{
+			if( $sParams == 'all' )
+			{
+				$result = $this->db->query( 'SELECT * FROM ' . $this->useTable );
+				
+				$i = 0;
+				foreach( $result as $row )
+					$this->dataResult[ $i++ ] = $row;
+			
+				if (isset( $this->hasMany ) )
+				{
+					foreach( $this->hasMany as $key=>$val )
+					{
+						// Create a new instance of this class
+						$this->$key = new $key;
+						
+						// Get the local key associated with this
+						// table.
+						$local_key = $this->$key->belongsTo[ get_class( $this ) ];
+						
+						$sql = 'SELECT ' . $this->$key->useTable
+							. '.* FROM ' . $this->useTable . ' JOIN '
+							. $this->$key->useTable . ' ON ' . $this->useTable
+							. '.' . $local_key . ' = ' . $this->$key->useTable . '.' . $val;
+						
+						
+						
+						$result = $this->db->query( $sql );
+						
+						foreach( $result as $row )
+						{
+							$this->childResult[ $key ][ $row[ $val ] ][ $row[ $this->$key->primaryKey ]] = $row;
+						}
+					}
+				}
+				/*
+				if( isset( $this->hasMany ) )
+				{
+					foreach( $this->hasMany as $key=>$val )
+					{
+						$this->$key = new $key;
+						
+						$this->$key->db = &$this->db;
+						
+						$this->$key->find( 'all' );
+					}
+				}*/
+			}
+		}
+	}
+	
+	/*
+	 *	DataObject::fetchRow
+	 *
+	 *	Executes a find using the given parameters.
+	 *
+	 */
+	function fetchRow()
+	{
+		// If there is still a row set
+		if( isset( $this->dataResult[ $this->resultIterator ] ) )
+		{
+			// For each value in the row, set the local variable.
+			foreach( $this->dataResult[ $this->resultIterator ] as $name=>$val )
+				$this->$name = $val;
+			
+			// If this 
+			
+			$id = $this->primaryKey;
+			
+			if( isset( $this->hasMany ))
+			{
+				foreach( $this->hasMany as $key=>$val )
+				{
+					if( isset( $this->childResult[ $key ][ $this->$id ] ) )
+					{
+						foreach( $this->childResult[ $key ][ $this->$id ] as $node  )
+						{
+							foreach( $node as $name=>$value )
+								$this->$key->$name = $value;
+						}
+					}
+				}
+			} 
+			
+			$this->resultIterator++;
+			
+			return true;
+		} else
+		{
+			return false;
+		}
+	}
+}
