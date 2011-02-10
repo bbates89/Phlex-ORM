@@ -2,6 +2,7 @@
 /*
  * This class provides an "SQL Object", which can be built using
  * the static SQLBuilder class, and executed using SQLObject::execute.
+ *
  */
  
  define( "PHLEX_SELECT", 1000 );
